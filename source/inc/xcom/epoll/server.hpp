@@ -27,13 +27,13 @@ namespace xcom::epoll
     template <typename Handler, std::uint32_t Max_client_count>
     start_error_t server<Handler, Max_client_count>::start(const endpoint_t& endpoint) noexcept
     {
-        return start_error_t(util::listen(_fd, _epoll_fd, static_cast<int>(_events.size()), endpoint));
+        return start_error_t(util::listen(_fd, _epoll_fd, static_cast<int>(_events.size()), util::flags_for(true, false), endpoint));
     }
 
     template <typename Handler, std::uint32_t Max_client_count>
     void server<Handler, Max_client_count>::process(int event_count) noexcept
     {
-        std::cout << "processing " << event_count << " events\n";
+        std::cout << "processing " << event_count << " event(s)\n";
         for (auto i = _events.begin(); event_count != 0u; --event_count, ++i)
         {
             auto event_flags = i->events;
@@ -71,11 +71,11 @@ namespace xcom::epoll
         auto new_fd = util::accept_new_connection(_fd, remote_endpoint.address);
         if (new_fd != an_error)
         {
-            auto io_flags = _handler.get_initial_io_flags();
-            auto result = util::add_fd(_epoll_fd, new_fd, util::flags_for(io_flags));
+            std::cout << "accepted new connection " << new_fd << '\n';
+            auto result = util::add_fd(_epoll_fd, new_fd, util::flags_for(_handler.io_flags()));
             if (result != an_error)
             {
-                if (!_handler.on_session_created(new_fd, remote_endpoint)) {}
+                if (!_handler.on_session_created(new_fd, remote_endpoint))
                 {
                     util::unregister_event(_epoll_fd, new_fd);
                     util::close(new_fd);
@@ -83,12 +83,12 @@ namespace xcom::epoll
             }
             else
             {
-                // report error
+                std::cout << "error " << errno << " adding epoll event during new session\n";
             }
         }
         else
         {
-            // report error
+            std::cout << "error " << errno << " creating new session\n";
         }
     }
 }

@@ -11,7 +11,7 @@ namespace xcom::epoll
     using event_flags_t = std::uint32_t;
     using event_t = epoll_event;
 
-    struct io_flags
+    struct io_flags_t
     {
         bool sending {false};
         bool receiving {false};
@@ -20,7 +20,6 @@ namespace xcom::epoll
 
 namespace xcom::epoll::util
 {
-
     enum class listen_error_t : std::uint16_t
     {
         none,
@@ -36,6 +35,7 @@ namespace xcom::epoll::util
     {
         none,
         socket_create,
+        socket_connect,
         epoll_create,
         epoll_add_event,
         ipv6_not_supported,
@@ -43,7 +43,7 @@ namespace xcom::epoll::util
 
     bool convert(const endpoint_t& endpoint, sockaddr_in& address) noexcept;
     event_flags_t flags_for(bool receiving, bool sending) noexcept;
-    event_flags_t flags_for(io_flags input) noexcept;
+    event_flags_t flags_for(io_flags_t input) noexcept;
     bool no_error(event_flags_t flags) noexcept;
     bool receiving_flag(event_flags_t flags) noexcept;
     bool sending_flag(event_flags_t flags) noexcept;
@@ -53,9 +53,12 @@ namespace xcom::epoll::util
     int modify_event(int epoll_fd, int fd, event_t* event) noexcept;
     int unregister_event(int epoll_fd, int fd) noexcept;
     int update_event(int epoll_fd, int fd, event_flags_t flags) noexcept;
+    bool try_again_or_would_block() noexcept;
     int accept_new_connection(int listener_fd, ip_address_t& address) noexcept;
     int wait_for_events(int _epoll_fd, event_t* events, int event_count, int timeout) noexcept;
     connect_error_t connect(int& fd, int& epoll_fd, int io_flags, const endpoint_t& endpoint) noexcept;
-    listen_error_t listen(int& listen_fd, int& epoll_fd, int max_connection_count, const endpoint_t& endpoint) noexcept;
+    listen_error_t listen(int& listen_fd, int& epoll_fd, int max_connection_count, int flags, const endpoint_t& endpoint) noexcept;
     void close(int fd) noexcept;
+    int receive(int fd, void* buffer, size_t buffer_size);
+    int send(int fd, void* buffer, size_t buffer_size);
 }

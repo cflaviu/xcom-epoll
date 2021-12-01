@@ -1,6 +1,9 @@
 #include "xcom/epoll/util.hpp"
 
+#include <arpa/inet.h>
 #include <fcntl.h>
+#include <iostream>
+#include <linux/socket.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -23,13 +26,17 @@ namespace xcom::epoll::util
         return flags;
     }
 
-    event_flags_t flags_for(io_flags input) noexcept { return flags_for(input.receiving, input.sending); }
+    event_flags_t flags_for(io_flags_t input) noexcept { return flags_for(input.receiving, input.sending); }
 
-    // Set file descriptor to non-congested
     int set_non_blocking(int fd) noexcept
     {
-        int old_option = ::fcntl(fd, F_GETFL);
-        return ::fcntl(fd, F_SETFL, old_option | O_NONBLOCK);
+        int flags = ::fcntl(fd, F_GETFL);
+        if (flags != an_error)
+        {
+            flags = ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+        }
+
+        return flags;
     }
 
     // Register EPOLLIN on file descriptor FD into the epoll kernel event table indicated by epoll_fd,
@@ -38,17 +45,26 @@ namespace xcom::epoll::util
     {
         event_t event;
         event.data.fd = fd;
-        event.events = EPOLLET | EPOLLERR | io_flags;                  // Registering the fd is readable
-        int result = ::epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event); // Register the fd with the epoll kernel event table
+        event.events = EPOLLET | io_flags;                 // Registering the fd is readable
+        int result = register_event(epoll_fd, fd, &event); // Register the fd with the epoll kernel event table
         if (result != an_error)
         {
             result = set_non_blocking(fd);
+            if (result == an_error)
+            {
+                close(fd);
+                std::cout << "error " << errno << " in set_non_blocking\n";
+            }
+        }
+        else
+        {
+            std::cout << "error " << errno << " adding epoll fd\n";
         }
 
         return result;
     }
 
-    int register_event(int epoll_fd, int fd, event_t* event) noexcept { return ::epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, event); }
+    int register_event(int epoll_fd, int fd, event_t* event) noexcept { return ::epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, event); }
 
     int modify_event(int epoll_fd, int fd, event_t* event) noexcept { return ::epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, event); }
 
@@ -62,17 +78,32 @@ namespace xcom::epoll::util
         return modify_event(epoll_fd, fd, &event);
     }
 
+    bool try_again_or_would_block() noexcept { return (errno == EAGAIN) || (errno == EWOULDBLOCK); }
+
     int accept_new_connection(int listener_fd, ip_address_t& address) noexcept
     {
         sockaddr_in client_address;
         socklen_t client_address_length = sizeof(client_address);
-        int result = ::accept(listener_fd, (sockaddr*) &client_address, &client_address_length);
-        if (result != an_error)
+        int new_socket = ::accept(listener_fd, (sockaddr*) &client_address, &client_address_length);
+        if (new_socket != an_error)
         {
-            address = ip_address_t {}; //@@
+            auto result = set_non_blocking(new_socket);
+            if (result != an_error)
+            {
+                address = ip_address_t {}; //@@
+            }
+            else
+            {
+                ::close(new_socket);
+                new_socket = result;
+            }
+        }
+        else if (try_again_or_would_block())
+        {
+            std::cout << "accept returned EAGAIN or EWOULDBLOCK\n";
         }
 
-        return result;
+        return new_socket;
     }
 
     int wait_for_events(int epoll_fd, event_t* events, int event_count, int timeout) noexcept
@@ -111,7 +142,13 @@ namespace xcom::epoll::util
             return connect_error_t::socket_create;
         }
 
-        epoll_fd = ::epoll_create(1);
+        int result = connect(fd, (sockaddr*) &address, sizeof(address));
+        if (result == an_error)
+        {
+            return connect_error_t::socket_connect;
+        }
+
+        epoll_fd = ::epoll_create1(0);
         if (epoll_fd != an_error)
         {
             int result = add_fd(epoll_fd, fd, io_flags);
@@ -131,7 +168,7 @@ namespace xcom::epoll::util
         return connect_error_t::none;
     }
 
-    listen_error_t listen(int& fd, int& epoll_fd, int event_count, const endpoint_t& endpoint) noexcept
+    listen_error_t listen(int& fd, int& epoll_fd, int event_count, int flags, const endpoint_t& endpoint) noexcept
     {
         sockaddr_in address {};
         if (!convert(endpoint, address))
@@ -159,26 +196,20 @@ namespace xcom::epoll::util
             return listen_error_t::socket_listen;
         }
 
-        epoll_fd = ::epoll_create(event_count);
+        epoll_fd = ::epoll_create1(0);
         if (epoll_fd == an_error)
         {
             ::close(fd);
             return listen_error_t::epoll_create;
         }
 
-        int result = add_fd(epoll_fd, fd, 0); // Add listen file descriptor to event table using
+        int result = add_fd(epoll_fd, fd, flags); // Add listen file descriptor to event table using
         if (result == an_error)
         {
             ::close(epoll_fd);
             ::close(fd);
             return listen_error_t::epoll_add_event;
         }
-
-        if (endpoint.address.index() == 0)
-        {
-            const auto& src_address = std::get<ipv4_address_t>(endpoint.address);
-            address.sin_addr.s_addr = *reinterpret_cast<const std::uint32_t*>(src_address.data());
-        };
 
         return listen_error_t::none;
     }
@@ -190,4 +221,8 @@ namespace xcom::epoll::util
             ::close(fd);
         }
     }
+
+    int receive(int fd, void* buffer, size_t buffer_size) { return recv(fd, buffer, buffer_size, MSG_NOSIGNAL); }
+
+    int send(int fd, void* buffer, size_t buffer_size) { return ::send(fd, buffer, buffer_size, MSG_NOSIGNAL); }
 }

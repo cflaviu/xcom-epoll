@@ -26,14 +26,19 @@ namespace xcom::epoll
     template <typename Handler>
     start_error_t client<Handler>::start(const endpoint_t& endpoint) noexcept
     {
-        auto io_flags = _handler.get_initial_io_flags();
-        return start_error_t(util::connect(_fd, _epoll_fd, util::flags_for(io_flags), endpoint));
+        auto result = util::connect(_fd, _epoll_fd, util::flags_for(_handler.io_flags()), endpoint);
+        if (result == util::connect_error_t::none)
+        {
+            _handler.on_session_created(_fd, endpoint);
+        }
+
+        return start_error_t(result);
     }
 
     template <typename Handler>
     void client<Handler>::process(int event_count) noexcept
     {
-        std::cout << "processing " << event_count << " events\n";
+        std::cout << "processing " << event_count << " event(s)\n";
         for (auto i = _events.begin(); event_count != 0u; --event_count, ++i)
         {
             auto event_flags = i->events;

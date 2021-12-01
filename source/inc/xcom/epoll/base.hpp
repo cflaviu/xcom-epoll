@@ -13,18 +13,18 @@ namespace xcom::epoll
     public:
         ~Handler() noexcept;
 
-        io_flags get_initial_io_flags() const noexcept;
+        io_flags_t io_flags() const noexcept;
 
         bool on_session_created(fd_t fd, const endpoint_t& remote_endpoint) noexcept;
         void on_session_closed(fd_t fd) noexcept;
 
-        /// @returns True to close the connection; on_session_closed will not be called. False otherwise.
+        /// @returns if IO flags were updated. False otherwise.
         bool on_error(fd_t fd, int error) noexcept;
 
-        /// @returns True to continue receiving data. False otherwise.
+        /// @returns True if IO flags were updated. False otherwise.
         bool receive_data(fd_t fd) noexcept;
 
-        /// @returns True to continue sending data. False otherwise.
+        /// @returns True if IO flags were updated. False otherwise.
         bool send_data(fd_t fd) noexcept;
     };
     */
@@ -85,11 +85,15 @@ namespace xcom::epoll
     template <typename Handler, std::uint32_t Max_client_count>
     error_t base<Handler, Max_client_count>::step_execution(int timeout_ms) noexcept
     {
-        std::cout << "wait for events...\n";
+        // std::cout << "wait for events...\n";
         auto result = util::wait_for_events(_epoll_fd, _events.data(), static_cast<int>(_events.size()), timeout_ms);
         if (result > 0)
         {
             process(result);
+        }
+        else if (result < 0)
+        {
+            std::cout << "error " << errno << " waiting for events\n";
         }
 
         return result;
@@ -98,18 +102,23 @@ namespace xcom::epoll
     template <typename Handler, std::uint32_t Max_client_count>
     void base<Handler, Max_client_count>::process_event(fd_t fd, event_flags_t event_flags) noexcept
     {
-        bool request_receiving = util::receiving_flag(event_flags) ? _handler.receive_data(fd) : false;
-        bool request_sending = util::sending_flag(event_flags) ? _handler.send_data(fd) : false;
-        auto required_event_flags = util::flags_for(request_receiving, request_sending);
-        if ((required_event_flags ^ event_flags) != 0u)
+        std::cout << "process events " << event_flags << " for session " << fd << '\n';
+        bool flags_updated = util::receiving_flag(event_flags) ? _handler.receive_data(fd) : false;
+        flags_updated |= util::sending_flag(event_flags) ? _handler.send_data(fd) : false;
+        if (flags_updated)
         {
-            if (required_event_flags != 0u)
+            auto required_event_flags = util::flags_for(_handler.io_flags());
+            if ((required_event_flags ^ event_flags) != 0u)
             {
-                util::update_event(_epoll_fd, fd, required_event_flags);
-            }
-            else
-            {
-                close_session(fd);
+                if (required_event_flags != 0u)
+                {
+                    std::cout << "updated events to " << required_event_flags << " for session " << fd << '\n';
+                    util::update_event(_epoll_fd, fd, required_event_flags);
+                }
+                else
+                {
+                    close_session(fd);
+                }
             }
         }
     }
