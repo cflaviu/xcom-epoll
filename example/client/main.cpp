@@ -1,18 +1,12 @@
 #include "client.hpp"
-#include <chrono>
-#include <thread>
 
 int main(int /*argc*/, const char* /*argv*/[])
 {
     using namespace xcom;
-    using namespace xcom::epoll::example::client;
+    using namespace xcom::epoll;
 
-    data_handler handler({true, false}, 4u * 1024u);
-    item client(std::move(handler));
-
-    endpoint_t remote_endpoint {};
-    remote_endpoint.address = ipv4_address_t {127, 0, 0, 1};
-    remote_endpoint.port = 9000u;
+    example::client::item client(io_flags_t {true, false}, 4u * 1024u);
+    constexpr endpoint_t remote_endpoint {ipv4_address_t {127, 0, 0, 1}, 9000u};
 
     auto result = client.start(remote_endpoint);
     if (result == 0u)

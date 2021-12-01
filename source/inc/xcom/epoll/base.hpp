@@ -37,7 +37,11 @@ namespace xcom::epoll
     public:
         using handler_t = Handler;
 
-        base(handler_t&& handler): _handler(std::move(handler)) {}
+        template <typename... Args>
+        base(Args&&... args): _handler(std::forward<Args>(args)...)
+        {
+        }
+
         virtual ~base() noexcept { stop(); }
 
         const handler_t& handler() const noexcept { return _handler; }
