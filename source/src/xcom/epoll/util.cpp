@@ -1,12 +1,13 @@
-#include "xcom/epoll/util.hpp"
-
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <iostream>
-#include <linux/socket.h>
-#include <netinet/in.h>
-#include <sys/epoll.h>
-#include <unistd.h>
+#ifndef PCH
+    #include "xcom/epoll/util.hpp"
+    #include <arpa/inet.h>
+    #include <fcntl.h>
+    #include <iostream>
+    //#include <linux/socket.h>
+    #include <netinet/in.h>
+    #include <sys/epoll.h>
+    #include <unistd.h>
+#endif
 
 namespace xcom::epoll::util
 {
@@ -80,7 +81,7 @@ namespace xcom::epoll::util
 
     bool try_again_or_would_block() noexcept { return (errno == EAGAIN) || (errno == EWOULDBLOCK); }
 
-    int accept_new_connection(int listener_fd, ip_address_t& address) noexcept
+    int accept_new_connection(int listener_fd, endpoint_t& endpoint) noexcept
     {
         sockaddr_in client_address;
         socklen_t client_address_length = sizeof(client_address);
@@ -90,7 +91,10 @@ namespace xcom::epoll::util
             auto result = set_non_blocking(new_socket);
             if (result != an_error)
             {
-                address = ip_address_t {}; //@@
+                ipv4_address_t addr;
+                *reinterpret_cast<std::uint32_t*>(addr.data()) = client_address.sin_addr.s_addr;
+                endpoint.address = addr;
+                endpoint.port = htons(client_address.sin_port);
             }
             else
             {
@@ -128,7 +132,7 @@ namespace xcom::epoll::util
         return true;
     }
 
-    connect_error_t connect(int& fd, int& epoll_fd, int io_flags, const endpoint_t& endpoint) noexcept
+    connect_error_t connect(int& fd, int& epoll_fd, int io_flags, endpoint_t& endpoint) noexcept
     {
         sockaddr_in address {};
         if (!convert(endpoint, address))
@@ -148,6 +152,7 @@ namespace xcom::epoll::util
             return connect_error_t::socket_connect;
         }
 
+        endpoint.port = htons(address.sin_port);
         epoll_fd = ::epoll_create1(0);
         if (epoll_fd != an_error)
         {
@@ -214,15 +219,11 @@ namespace xcom::epoll::util
         return listen_error_t::none;
     }
 
-    void close(int fd) noexcept
-    {
-        if (fd > 0)
-        {
-            ::close(fd);
-        }
-    }
+    int close(int fd) noexcept { return ::close(fd); }
 
-    int receive(int fd, void* buffer, size_t buffer_size) { return recv(fd, buffer, buffer_size, MSG_NOSIGNAL); }
+    constexpr int data_transfer_flags = 0; // MSG_NOSIGNAL
 
-    int send(int fd, void* buffer, size_t buffer_size) { return ::send(fd, buffer, buffer_size, MSG_NOSIGNAL); }
+    int receive(int fd, void* buffer, size_t buffer_size) { return recv(fd, buffer, buffer_size, data_transfer_flags); }
+
+    int send(int fd, void* buffer, size_t buffer_size) { return ::send(fd, buffer, buffer_size, data_transfer_flags); }
 }

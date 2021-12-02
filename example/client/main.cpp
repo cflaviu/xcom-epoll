@@ -1,4 +1,6 @@
-#include "client.hpp"
+#ifndef PCH
+    #include "client.hpp"
+#endif
 
 int main(int /*argc*/, const char* /*argv*/[])
 {

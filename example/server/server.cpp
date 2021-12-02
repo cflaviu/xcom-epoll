@@ -7,9 +7,9 @@
 
 namespace xcom::epoll::example::server
 {
-    bool data_handler::on_session_created(fd_t fd, const endpoint_t& /*remote_endpoint*/) noexcept
+    bool data_handler::on_session_created(fd_t fd, const endpoint_t& remote_endpoint) noexcept
     {
-        std::cout << (fd != 3 ? "client" : "server") << " session " << fd << " created\n";
+        std::cout << (fd != 3 ? "client" : "server") << " session " << fd << " <" << remote_endpoint << "> created\n";
         return true;
     }
 
@@ -72,7 +72,7 @@ namespace xcom::epoll::example::server
             else if (util::try_again_or_would_block())
             {
                 retry = true;
-                std::cout << "re-try sending\n";
+                std::cout << "retry sending data in session " << fd << '\n';
             }
             else
             {

@@ -12,6 +12,7 @@ StaticLibrary {
         "inc/xcom/epoll/client.hpp",
         "inc/xcom/epoll/server.hpp",
         "src/xcom/epoll/util.cpp",
+        "src/xcom/type.cpp",
     ]
     cpp.cxxLanguageVersion: "c++20"
     cpp.enableRtti: false

@@ -54,11 +54,11 @@ namespace xcom::epoll::util
     int unregister_event(int epoll_fd, int fd) noexcept;
     int update_event(int epoll_fd, int fd, event_flags_t flags) noexcept;
     bool try_again_or_would_block() noexcept;
-    int accept_new_connection(int listener_fd, ip_address_t& address) noexcept;
+    int accept_new_connection(int listener_fd, endpoint_t& endpoint) noexcept;
     int wait_for_events(int _epoll_fd, event_t* events, int event_count, int timeout) noexcept;
-    connect_error_t connect(int& fd, int& epoll_fd, int io_flags, const endpoint_t& endpoint) noexcept;
+    connect_error_t connect(int& fd, int& epoll_fd, int io_flags, endpoint_t& endpoint) noexcept;
     listen_error_t listen(int& listen_fd, int& epoll_fd, int max_connection_count, int flags, const endpoint_t& endpoint) noexcept;
-    void close(int fd) noexcept;
+    int close(int fd) noexcept;
     int receive(int fd, void* buffer, size_t buffer_size);
     int send(int fd, void* buffer, size_t buffer_size);
 }

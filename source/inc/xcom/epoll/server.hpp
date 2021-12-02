@@ -12,7 +12,7 @@ namespace xcom::epoll
         using parent = base<Handler, Max_client_count>;
         using parent::parent;
 
-        start_error_t start(const endpoint_t& endpoint) noexcept override;
+        start_error_t start(endpoint_t endpoint) noexcept override;
 
     protected:
         using parent::_epoll_fd;
@@ -25,7 +25,7 @@ namespace xcom::epoll
     };
 
     template <typename Handler, std::uint32_t Max_client_count>
-    start_error_t server<Handler, Max_client_count>::start(const endpoint_t& endpoint) noexcept
+    start_error_t server<Handler, Max_client_count>::start(endpoint_t endpoint) noexcept
     {
         return start_error_t(util::listen(_fd, _epoll_fd, static_cast<int>(_events.size()), util::flags_for(true, false), endpoint));
     }
@@ -54,7 +54,7 @@ namespace xcom::epoll
             {
                 if (_handler.on_error(fd, errno))
                 {
-                    util::unregister_event(_epoll_fd, fd);
+                    static_cast<void>(util::unregister_event(_epoll_fd, fd));
                 }
             }
             else if (_handler.on_error(0, errno))
@@ -68,17 +68,17 @@ namespace xcom::epoll
     void server<Handler, Max_client_count>::create_session() noexcept
     {
         endpoint_t remote_endpoint;
-        auto new_fd = util::accept_new_connection(_fd, remote_endpoint.address);
+        auto new_fd = util::accept_new_connection(_fd, remote_endpoint);
         if (new_fd != an_error)
         {
-            std::cout << "accepted new connection " << new_fd << '\n';
+            std::cout << "accepted new connection " << new_fd << " <" << remote_endpoint << "> \n";
             auto result = util::add_fd(_epoll_fd, new_fd, util::flags_for(_handler.io_flags()));
             if (result != an_error)
             {
                 if (!_handler.on_session_created(new_fd, remote_endpoint))
                 {
-                    util::unregister_event(_epoll_fd, new_fd);
-                    util::close(new_fd);
+                    static_cast<void>(util::unregister_event(_epoll_fd, new_fd));
+                    static_cast<void>(util::close(new_fd));
                 }
             }
             else

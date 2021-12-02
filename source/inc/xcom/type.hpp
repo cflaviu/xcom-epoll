@@ -2,6 +2,7 @@
 #ifndef PCH
     #include <array>
     #include <cstdint>
+    #include <iosfwd>
     #include <variant>
 #endif
 
@@ -21,4 +22,7 @@ namespace xcom
         ip_address_t address {};
         port_t port {0};
     };
+
+    std::ostream& operator<<(std::ostream& out, const ip_address_t& item);
+    std::ostream& operator<<(std::ostream& out, const endpoint_t& item);
 }

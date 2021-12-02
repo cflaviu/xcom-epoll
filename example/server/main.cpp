@@ -1,4 +1,6 @@
-#include "server.hpp"
+#ifndef PCH
+    #include "server.hpp"
+#endif
 
 int main(int /*argc*/, const char* /*argv*/[])
 {

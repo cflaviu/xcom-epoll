@@ -12,7 +12,7 @@ namespace xcom::epoll
         using parent = base<Handler>;
         using parent::parent;
 
-        start_error_t start(const endpoint_t& endpoint) noexcept override;
+        start_error_t start(endpoint_t endpoint) noexcept override;
 
     protected:
         using parent::_epoll_fd;
@@ -24,7 +24,7 @@ namespace xcom::epoll
     };
 
     template <typename Handler>
-    start_error_t client<Handler>::start(const endpoint_t& endpoint) noexcept
+    start_error_t client<Handler>::start(endpoint_t endpoint) noexcept
     {
         auto result = util::connect(_fd, _epoll_fd, util::flags_for(_handler.io_flags()), endpoint);
         if (result == util::connect_error_t::none)

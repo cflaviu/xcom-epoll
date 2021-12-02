@@ -6,9 +6,9 @@
 
 namespace xcom::epoll::example::client
 {
-    bool data_handler::on_session_created(fd_t fd, const endpoint_t& /*remote_endpoint*/) noexcept
+    bool data_handler::on_session_created(fd_t fd, const endpoint_t& remote_endpoint) noexcept
     {
-        std::cout << "session " << fd << " created\n";
+        std::cout << "session " << fd << " <" << remote_endpoint << "> created\n";
         return true;
     }
 

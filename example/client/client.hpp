@@ -1,6 +1,8 @@
 #pragma once
-#include "base_data_handler.hpp"
-#include <xcom/epoll/client.hpp>
+#ifndef PCH
+    #include "base_data_handler.hpp"
+    #include <xcom/epoll/client.hpp>
+#endif
 
 namespace xcom::epoll::example::client
 {
