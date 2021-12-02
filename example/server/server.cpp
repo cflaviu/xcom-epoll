@@ -57,31 +57,28 @@ namespace xcom::epoll::example::server
     bool data_handler::send_data(fd_t fd) noexcept
     {
         std::cout << "sending data in session " << fd << '\n';
-        bool retry = false;
-        bool can_continue = _amount != 0;
-        if (can_continue)
+        bool flags_updated = false;
+        if (_amount != 0)
         {
             std::memcpy(_sending_buffer.data(), reinterpret_cast<const std::uint8_t*>(&_amount), 4u);
             std::fill_n(_sending_buffer.begin() + 4, _amount, 0xFE);
             auto result = send(fd, _sending_buffer.data(), _amount + 4, 0);
             if (result != an_error)
             {
-                _io_flags.sending = false;
+                flags_updated = true;
+                _io_flags = {false, true};
                 std::cout << "sent " << _amount << " bytes in session " << fd << '\n';
             }
             else if (util::try_again_or_would_block())
             {
-                retry = true;
-                std::cout << "retry sending data in session " << fd << '\n';
+                std::cout << "it will retry sending data in session " << fd << '\n';
             }
             else
             {
-                can_continue = false;
                 std::cout << "error " << errno << " sending data in session " << fd << '\n';
             }
         }
 
-        _io_flags.receiving = can_continue && !retry;
-        return true;
+        return flags_updated;
     }
 }

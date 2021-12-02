@@ -15,6 +15,8 @@ namespace xcom::epoll::example::client
         bool on_session_created(fd_t fd, const endpoint_t& remote_endpoint) noexcept;
         void on_session_closed(fd_t fd) noexcept;
 
+        bool can_continue() const noexcept { return _sending_count <= _max_sending_count; }
+
         bool receive_data(fd_t fd) noexcept;
         bool send_data(fd_t fd) noexcept;
 

@@ -1,3 +1,4 @@
+// xcom-epoll library
 #ifndef PCH
     #include "xcom/type.hpp"
     #include <cstdint>
@@ -17,7 +18,7 @@ namespace xcom
         }
         else
         {
-            out << "<ipv6>";
+            out << "<ipv6>"; // not yet supported
         }
 
         return out;

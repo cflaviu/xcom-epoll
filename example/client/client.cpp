@@ -35,15 +35,15 @@ namespace xcom::epoll::example::client
             std::cout << "error-A " << errno << " receiving data in session " << fd << '\n';
         }
 
-        _io_flags.sending = ++_sending_count <= _max_sending_count;
+        ++_sending_count;
+        _io_flags.sending = can_continue();
         return true;
     }
 
     bool data_handler::send_data(fd_t fd) noexcept
     {
-        bool retry = false;
-        bool can_continue = _sending_count <= _max_sending_count;
-        if (can_continue)
+        bool flags_updated = false;
+        if (can_continue())
         {
             std::cout << "sending #" << int(_sending_count) << '\n';
             std::uint32_t amount = _sending_buffer.size() / _sending_count;
@@ -52,22 +52,20 @@ namespace xcom::epoll::example::client
             auto result = util::send(fd, _sending_buffer.data(), amount);
             if (result != an_error)
             {
-                _io_flags.sending = false;
+                flags_updated = true;
+                _io_flags = {false, true};
                 std::cout << "sent " << amount << " bytes in session " << fd << '\n';
             }
             else if (util::try_again_or_would_block())
             {
-                std::cout << "retrying retrieving data in session " << fd << '\n';
-                retry = true;
+                std::cout << "it will retry retrieving data in session " << fd << '\n';
             }
             else
             {
-                can_continue = false;
                 std::cout << "error " << errno << " sending data in session " << fd << '\n';
             }
         }
 
-        _io_flags.receiving = can_continue && !retry;
-        return true;
+        return flags_updated;
     }
 }

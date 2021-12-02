@@ -1,3 +1,4 @@
+// xcom-epoll library
 #pragma once
 #ifndef PCH
     #include <xcom/epoll/base.hpp>

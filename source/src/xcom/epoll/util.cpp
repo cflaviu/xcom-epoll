@@ -1,3 +1,4 @@
+// xcom-epoll library
 #ifndef PCH
     #include "xcom/epoll/util.hpp"
     #include <arpa/inet.h>
@@ -40,14 +41,12 @@ namespace xcom::epoll::util
         return flags;
     }
 
-    // Register EPOLLIN on file descriptor FD into the epoll kernel event table indicated by epoll_fd,
-    // and the parameter enable_et specifies whether et mode is enabled for FD
     int add_fd(int epoll_fd, int fd, int io_flags) noexcept
     {
         event_t event;
         event.data.fd = fd;
-        event.events = EPOLLET | io_flags;                 // Registering the fd is readable
-        int result = register_event(epoll_fd, fd, &event); // Register the fd with the epoll kernel event table
+        event.events = EPOLLET | io_flags;
+        int result = register_event(epoll_fd, fd, &event);
         if (result != an_error)
         {
             result = set_non_blocking(fd);

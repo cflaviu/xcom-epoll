@@ -1,3 +1,4 @@
+// xcom-epoll library
 #pragma once
 #ifndef PCH
     #include <xcom/epoll/base.hpp>
@@ -71,7 +72,7 @@ namespace xcom::epoll
         auto new_fd = util::accept_new_connection(_fd, remote_endpoint);
         if (new_fd != an_error)
         {
-            std::cout << "accepted new connection " << new_fd << " <" << remote_endpoint << "> \n";
+            std::cout << "accepted new connection " << new_fd << " from <" << remote_endpoint << "> \n";
             auto result = util::add_fd(_epoll_fd, new_fd, util::flags_for(_handler.io_flags()));
             if (result != an_error)
             {
